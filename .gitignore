@@ -1,0 +1,30 @@
+# Composer dependencies
+/vendor/
+composer.lock
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# AI assistant tools
+.claude/
+.codex/
+
+# IDE / editor
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs / temp
+*.log
+*.cache
+/tmp/
