@@ -41,6 +41,18 @@ class CreatePersonalAccessToken extends Command
         }
 
         $repo = app(AccessTokenRepository::class);
+
+        // Disallow duplicate labels for the same user (case-insensitive),
+        // matching the web UI behavior (Controllers/Tokens).
+        foreach ($repo->getAllTokensByUserId($userId) ?? [] as $existing) {
+            $existing = (array) $existing;
+            if (strcasecmp((string) ($existing['name'] ?? ''), $name) === 0) {
+                $this->error("User {$userId} already has a token labeled '{$name}'.");
+
+                return self::FAILURE;
+            }
+        }
+
         $created = $repo->createToken($userId, $name);
 
         $days = $this->option('days');
