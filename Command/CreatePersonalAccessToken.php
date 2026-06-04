@@ -24,7 +24,7 @@ class CreatePersonalAccessToken extends Command
     protected $signature = 'pat:create
         {userId : Leantime user id the token acts as}
         {name=personal-token : a label to identify this token}
-        {--days= : optional expiry, in days from now}';
+        {--days= : optional expiry in days from now; omit or set 0/negative for no expiry}';
 
     protected $description = 'Create a Personal Access Token for a user (Bearer token for the JSON-RPC API).';
 
@@ -55,6 +55,8 @@ class CreatePersonalAccessToken extends Command
 
         $created = $repo->createToken($userId, $name);
 
+        // Omitted, empty, or <= 0 means "no expiry" (token never expires);
+        // only a positive value sets an expires_at.
         $days = $this->option('days');
         if ($days !== null && $days !== '' && (int) $days > 0) {
             $expiresAt = now()->addDays((int) $days);
@@ -63,6 +65,8 @@ class CreatePersonalAccessToken extends Command
                 ->where('id', $created['id'])
                 ->update(['expires_at' => $expiresAt]);
             $this->line("Expires: {$expiresAt}");
+        } else {
+            $this->line('Expires: never (no expiry)');
         }
 
         $this->info("Personal Access Token created for user {$userId} ({$user['username']}), label '{$name}'.");

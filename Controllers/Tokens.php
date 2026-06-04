@@ -44,7 +44,9 @@ class Tokens extends Controller
 
         if (isset($params['createToken'])) {
             $label = trim((string) ($params['label'] ?? ''));
-            $days = (int) ($params['days'] ?? 90);
+            // Blank/absent or <= 0 means "no expiry" (token never expires);
+            // only a positive value sets an expires_at below.
+            $days = (int) ($params['days'] ?? 0);
 
             if ($label === '') {
                 $this->tpl->setNotification('A label is required.', 'error');

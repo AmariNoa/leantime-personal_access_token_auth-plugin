@@ -74,7 +74,9 @@ class TokenTab
             .'<input type="text" name="label" class="form-control" placeholder="e.g. claude-code" maxlength="100" required '
             .'autocomplete="off" data-1p-ignore="true" data-lpignore="true" data-bwignore data-form-type="other" /></div>';
         echo '<div class="form-group"><label>Expires in (days)</label>'
-            .'<input type="number" name="days" class="form-control" value="90" min="1" max="3650" /></div>';
+            .'<input type="number" name="days" class="form-control" value="90" min="0" max="3650" '
+            .'placeholder="leave blank for no expiry" />'
+            .'<span class="help-block">Enter 0 or leave blank for no expiry (the token never expires).</span></div>';
         echo '<p class="stdformbutton"><button class="btn btn-primary" type="submit">Create token</button></p>';
         echo '</form>';
 
