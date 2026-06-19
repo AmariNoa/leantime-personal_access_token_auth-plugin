@@ -95,7 +95,9 @@ $displayName = function ($first, $last, $username, $id) {
                     $u = (array) $u;
                     $uid = (int) ($u['id'] ?? 0);
                     $name = $displayName($u['firstname'] ?? '', $u['lastname'] ?? '', $u['username'] ?? '', $uid);
-                    echo '<option value="'.$uid.'"'.($uid === $filterUserId ? ' selected' : '').'>'.htmlspecialchars($name).'</option>';
+                    $email = trim((string) ($u['username'] ?? ''));
+                    $label = ($email !== '' && $email !== $name) ? $name.' ('.$email.')' : $name;
+                    echo '<option value="'.$uid.'"'.($uid === $filterUserId ? ' selected' : '').'>'.htmlspecialchars($label).'</option>';
                 } ?>
             </select>
         </form>
@@ -111,9 +113,15 @@ $displayName = function ($first, $last, $username, $id) {
                     foreach ($tokens as $t) {
                         $t = (array) $t;
                         $id = (string) ($t['id'] ?? '');
-                        $uname = $displayName($t['firstname'] ?? '', $t['lastname'] ?? '', $t['username'] ?? '', $t['tokenable_id'] ?? ''); ?>
+                        $uname = $displayName($t['firstname'] ?? '', $t['lastname'] ?? '', $t['username'] ?? '', $t['tokenable_id'] ?? '');
+                        $uemail = trim((string) ($t['username'] ?? '')); ?>
                         <tr>
-                            <td><?php echo htmlspecialchars($uname); ?></td>
+                            <td>
+                                <?php echo htmlspecialchars($uname);
+                                if ($uemail !== '' && $uemail !== $uname) {
+                                    echo '<br><small class="text-muted">'.htmlspecialchars($uemail).'</small>';
+                                } ?>
+                            </td>
                             <td><?php echo htmlspecialchars((string) ($t['name'] ?? '')); ?></td>
                             <td><?php echo htmlspecialchars((string) ($t['created_at'] ?? '')); ?></td>
                             <td><?php echo htmlspecialchars((string) ($t['last_used_at'] ?? 'never')); ?></td>
