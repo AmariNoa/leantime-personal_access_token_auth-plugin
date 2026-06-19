@@ -1,7 +1,7 @@
 {
     "name": "amarinoa/personal-access-token-auth",
     "description": "Authenticate Leantime's JSON-RPC API with Personal Access Tokens (Authorization: Bearer), acting as the token's user. Clean-room AGPL implementation built on Leantime's core Sanctum/AccessToken primitives.",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "type": "plugin",
     "license": "AGPL-3.0-only",
     "authors": [

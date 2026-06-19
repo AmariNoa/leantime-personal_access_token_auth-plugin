@@ -13,6 +13,8 @@ use Leantime\Core\Db\Db;
 use Leantime\Domain\Auth\Models\Roles;
 use Leantime\Domain\Auth\Services\AccessToken;
 use Leantime\Domain\Auth\Services\Auth;
+use Leantime\Domain\Setting\Repositories\Setting;
+use Leantime\Plugins\PersonalAccessTokenAuth\Services\IssuancePolicy;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -45,9 +47,16 @@ class Admin extends Controller
             $tokens = $db->select($sql.'ORDER BY u.firstname, u.lastname, t.created_at DESC');
         }
 
+        $policy = app(IssuancePolicy::class);
+
         $this->tpl->assign('tokens', $tokens);
         $this->tpl->assign('usersWithTokens', $usersWithTokens);
         $this->tpl->assign('filterUserId', $filterUserId);
+        // Issuance-policy settings for the admin form.
+        $this->tpl->assign('oidcAvailable', $policy->oidcPluginAvailable());
+        $this->tpl->assign('useOidc', $policy->useOidcSetting());
+        $this->tpl->assign('minRole', $policy->minRole());
+        $this->tpl->assign('roles', Roles::getRoles());
 
         return $this->tpl->display('personalAccessTokenAuth.admin');
     }
@@ -55,6 +64,25 @@ class Admin extends Controller
     public function post(array $params): Response
     {
         Auth::authOrRedirect([Roles::$owner, Roles::$admin], true);
+
+        if (isset($params['saveSettings'])) {
+            $setting = app(Setting::class);
+
+            // The OIDC-connect toggle is only meaningful when the AdvancedOidc
+            // plugin is present; ignore the checkbox otherwise (fall back to
+            // standard role-based gating).
+            $useOidc = app(IssuancePolicy::class)->oidcPluginAvailable() && isset($params['useOidc']);
+            $setting->saveSetting(IssuancePolicy::SETTING_USE_OIDC, $useOidc ? '1' : '0');
+
+            $minRole = (int) ($params['minRole'] ?? IssuancePolicy::DEFAULT_MIN_ROLE);
+            if (array_key_exists($minRole, Roles::getRoles())) {
+                $setting->saveSetting(IssuancePolicy::SETTING_MIN_ROLE, (string) $minRole);
+            }
+
+            $this->tpl->setNotification('Settings saved.', 'success');
+
+            return Frontcontroller::redirect(BASE_URL.'/personalAccessTokenAuth/admin');
+        }
 
         if (isset($params['revokeToken'])) {
             try {

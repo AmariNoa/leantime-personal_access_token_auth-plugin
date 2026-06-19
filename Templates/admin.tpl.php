@@ -12,6 +12,11 @@ $formName = (string) session('formTokenName');
 $formValue = (string) session('formTokenValue');
 $base = BASE_URL;
 
+$oidcAvailable = (bool) $tpl->get('oidcAvailable');
+$useOidc = (bool) $tpl->get('useOidc');
+$minRole = (int) ($tpl->get('minRole') ?? 5);
+$roles = $tpl->get('roles') ?? [];
+
 $displayName = function ($first, $last, $username, $id) {
     $name = trim((string) $first.' '.(string) $last);
     if ($name === '') {
@@ -37,6 +42,50 @@ $displayName = function ($first, $last, $username, $id) {
     <div class="maincontentinner">
 
         <?php echo $tpl->displayNotification(); ?>
+
+        <div class="box" style="margin-bottom:20px;">
+            <h4 class="widgettitle title-light"><span class="fa fa-fw fa-cog"></span> Issuance policy</h4>
+            <form method="post" action="<?php echo htmlspecialchars($base); ?>/personalAccessTokenAuth/admin">
+                <input type="hidden" name="<?php echo htmlspecialchars($formName); ?>" value="<?php echo htmlspecialchars($formValue); ?>" />
+                <input type="hidden" name="saveSettings" value="1" />
+
+                <?php if ($oidcAvailable) { ?>
+                    <div class="form-group">
+                        <label class="checkbox">
+                            <input type="checkbox" name="useOidc" value="1" <?php echo $useOidc ? 'checked' : ''; ?> />
+                            Use AdvancedOidc plugin integration to gate token issuance
+                        </label>
+                        <span class="help-block">
+                            When enabled, only users whose IdP roles include one of
+                            <code>OIDC_PAT_ISSUE_ROLES</code> may issue tokens (the Leantime role
+                            below is ignored). Users without that entitlement have their tokens
+                            revoked on next login.
+                        </span>
+                    </div>
+                <?php } else { ?>
+                    <p class="text-muted">
+                        <span class="fa fa-info-circle"></span>
+                        The <strong>AdvancedOidc</strong> plugin is not installed, so OIDC-based
+                        gating is unavailable. Issuance is gated on the Leantime role below.
+                    </p>
+                <?php } ?>
+
+                <div class="form-group">
+                    <label>Minimum role allowed to issue tokens (standard mode)</label>
+                    <select name="minRole" class="form-control" style="max-width:280px;">
+                        <?php foreach ($roles as $key => $name) {
+                            $key = (int) $key; ?>
+                            <option value="<?php echo $key; ?>"<?php echo $key === $minRole ? ' selected' : ''; ?>>
+                                <?php echo htmlspecialchars(ucfirst((string) $name)).' ('.$key.')'; ?>
+                            </option>
+                        <?php } ?>
+                    </select>
+                    <span class="help-block">Used when OIDC integration is off. A user's role must rank at least this high to create a token.</span>
+                </div>
+
+                <p class="stdformbutton"><button class="btn btn-primary" type="submit">Save settings</button></p>
+            </form>
+        </div>
 
         <form method="get" action="<?php echo htmlspecialchars($base); ?>/personalAccessTokenAuth/admin" class="form-inline" style="margin-bottom:15px;">
             <label style="margin-right:8px;">Filter by user</label>

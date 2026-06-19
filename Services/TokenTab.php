@@ -20,15 +20,35 @@ class TokenTab
         return htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
     }
 
+    /** Whether the current user is allowed to see/use the token tab at all. */
+    private function mayIssue(): bool
+    {
+        return app()->make(IssuancePolicy::class)->currentUserMayIssue();
+    }
+
     /** Tab header <li> (with icon), echoed into the editOwn tab list. */
     public function renderTabHeader(): void
     {
+        // Hide the whole tab from users who may not issue tokens (the content
+        // pane hides in lockstep, so no orphan header remains).
+        if (! $this->mayIssue()) {
+            return;
+        }
+
         echo '<li><a href="#patTokens"><span class="fa fa-fw fa-key"></span> Personal Access Tokens</a></li>';
     }
 
     /** Tab content pane, echoed into the editOwn tab content area. */
     public function renderTabContent(): void
     {
+        // Hidden for ineligible users; also purge any tokens they still hold
+        // (defensive trigger for non-OIDC logins that never hit the login hook).
+        if (! $this->mayIssue()) {
+            app()->make(IssuancePolicy::class)->enforceForCurrentUser();
+
+            return;
+        }
+
         $accessToken = app()->make(\Leantime\Domain\Auth\Services\AccessToken::class);
         $userId = (int) session('userdata.id');
         $tokens = $accessToken->getUserTokens($userId) ?? [];

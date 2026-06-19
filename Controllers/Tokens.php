@@ -11,6 +11,7 @@ use Leantime\Core\Controller\Controller;
 use Leantime\Core\Controller\Frontcontroller;
 use Leantime\Core\Db\Db;
 use Leantime\Domain\Auth\Services\AccessToken;
+use Leantime\Plugins\PersonalAccessTokenAuth\Services\IssuancePolicy;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -43,6 +44,17 @@ class Tokens extends Controller
         $userId = (int) session('userdata.id');
 
         if (isset($params['createToken'])) {
+            // Enforce the issuance policy server-side. The tab is hidden for
+            // ineligible users, but a forged POST must still be rejected — and a
+            // user who is no longer eligible should not keep stale tokens.
+            $policy = app()->make(IssuancePolicy::class);
+            if (! $policy->currentUserMayIssue()) {
+                $policy->revokeAllForUser($userId);
+                $this->tpl->setNotification('You are not allowed to create personal access tokens.', 'error');
+
+                return $this->backToTab();
+            }
+
             $label = trim((string) ($params['label'] ?? ''));
             // Blank/absent or <= 0 means "no expiry" (token never expires);
             // only a positive value sets an expires_at below.

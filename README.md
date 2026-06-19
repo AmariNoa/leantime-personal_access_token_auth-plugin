@@ -99,6 +99,40 @@ curl -s https://YOUR_LEANTIME/api/jsonrpc \
 Without the plugin (or with an invalid token) the same Bearer-only request
 returns `401 Unauthorized`.
 
+## Restricting who may issue tokens
+
+By default any logged-in user can create a token for their own account from the
+**Account Settings → Personal Access Tokens** tab. Admins can restrict issuance
+from **Company → Administration → Access Tokens** (the plugin's admin page),
+which has an *Issuance policy* panel with two modes:
+
+- **Standard mode (default).** Pick a **minimum Leantime role**; only users whose
+  role ranks at least that high see the token tab and may create tokens. Users
+  below the threshold have the tab hidden and any existing tokens revoked. The
+  default is **readonly** (every role qualifies — no restriction), so upgrading
+  does not revoke anyone's tokens; raise it to tighten issuance.
+- **OIDC-connect mode.** Shown only when the companion
+  [`AdvancedOidc`](https://github.com/AmariNoa/leantime-advanced_oidc-plugin)
+  plugin (≥ 1.3.0) is installed. When enabled, issuance is gated **solely on the
+  IdP role** — the Leantime role is ignored. At login AdvancedOidc checks its
+  `OIDC_PAT_ISSUE_ROLES` against the user's verified IdP roles and records the
+  result in the session; this plugin reads it to show/hide the tab and authorize
+  creation. A user **without** the entitlement has the tab hidden and their
+  existing tokens **revoked on their next login**.
+
+Notes and limitations:
+
+- **Enforcement is server-side** (the create endpoint rejects ineligible users),
+  so hiding the tab is not the only guard.
+- **The CLI (`pat:create`) is not gated** — it is run by a trusted server admin
+  and bypasses both modes by design.
+- **OIDC-connect needs a session.** A user who signs in without OIDC (e.g.
+  password) has no entitlement signal and is therefore denied (fail-closed); the
+  defensive revoke runs when they open the account page.
+- **Role-change latency.** Losing the IdP role removes issuance and revokes
+  tokens at the **next login**, not instantly. Already-issued tokens keep working
+  until then — PAT *authentication* does not re-check IdP roles.
+
 ## Security notes
 
 - A token grants the **full access of its user** (abilities default to `*`).
