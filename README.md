@@ -102,23 +102,30 @@ returns `401 Unauthorized`.
 ## Restricting who may issue tokens
 
 By default any logged-in user can create a token for their own account from the
-**Account Settings → Personal Access Tokens** tab. Admins can restrict issuance
-from **Company → Administration → Access Tokens** (the plugin's admin page),
-which has an *Issuance policy* panel with two modes:
+**Account Settings → Personal Access Tokens** tab. Issuance runs in one of two
+modes:
 
-- **Standard mode (default).** Pick a **minimum Leantime role**; only users whose
-  role ranks at least that high see the token tab and may create tokens. Users
-  below the threshold have the tab hidden and any existing tokens revoked. The
-  default is **readonly** (every role qualifies — no restriction), so upgrading
-  does not revoke anyone's tokens; raise it to tighten issuance.
-- **OIDC-connect mode.** Shown only when the companion
+- **Standard mode (default).** Gated on a **minimum Leantime role**, set from
+  **Company → Administration → Access Tokens** (the plugin's admin page) →
+  *Issuance policy*. Only users whose role ranks at least that high see the token
+  tab and may create tokens; users below the threshold have the tab hidden and
+  any existing tokens revoked. The default is **readonly** (every role qualifies —
+  no restriction), so upgrading does not revoke anyone's tokens; raise it to
+  tighten issuance.
+- **OIDC-connect mode.** Switched on with the **`OIDC_PAT_ISSUE_INTEGRATION`** env
+  flag (`true`/`1`/`yes`/`on`), and only effective when the companion
   [`AdvancedOidc`](https://github.com/AmariNoa/leantime-advanced_oidc-plugin)
-  plugin (≥ 1.3.0) is installed. When enabled, issuance is gated **solely on the
-  IdP role** — the Leantime role is ignored. At login AdvancedOidc checks its
-  `OIDC_PAT_ISSUE_ROLES` against the user's verified IdP roles and records the
-  result in the session; this plugin reads it to show/hide the tab and authorize
-  creation. A user **without** the entitlement has the tab hidden and their
-  existing tokens **revoked on their next login**.
+  plugin (≥ 1.3.0) is installed. Issuance is then gated **solely on the IdP role**
+  — the Leantime role is ignored, and the admin page hides the standard-mode role
+  setting. At login AdvancedOidc checks its `OIDC_PAT_ISSUE_ROLES` against the
+  user's verified IdP roles and records the result in the session; this plugin
+  reads it to show/hide the tab and authorize creation. A user **without** the
+  entitlement has the tab hidden and their existing tokens **revoked on their next
+  login**.
+
+The on/off switch is an env flag (not a DB setting) on purpose: it is
+ops-controlled and applied on container recreate, so it cannot be flipped off by
+accident from the admin UI.
 
 Notes and limitations:
 

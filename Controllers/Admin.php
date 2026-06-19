@@ -52,9 +52,11 @@ class Admin extends Controller
         $this->tpl->assign('tokens', $tokens);
         $this->tpl->assign('usersWithTokens', $usersWithTokens);
         $this->tpl->assign('filterUserId', $filterUserId);
-        // Issuance-policy settings for the admin form.
+        // Issuance-policy state for the admin form. The OIDC on/off switch is an
+        // env flag (not editable here); only the standard-mode min role is.
+        $this->tpl->assign('usesOidc', $policy->usesOidc());
+        $this->tpl->assign('oidcIntegrationEnabled', $policy->oidcIntegrationEnabled());
         $this->tpl->assign('oidcAvailable', $policy->oidcPluginAvailable());
-        $this->tpl->assign('useOidc', $policy->useOidcSetting());
         $this->tpl->assign('minRole', $policy->minRole());
         $this->tpl->assign('roles', Roles::getRoles());
 
@@ -66,17 +68,11 @@ class Admin extends Controller
         Auth::authOrRedirect([Roles::$owner, Roles::$admin], true);
 
         if (isset($params['saveSettings'])) {
-            $setting = app(Setting::class);
-
-            // The OIDC-connect toggle is only meaningful when the AdvancedOidc
-            // plugin is present; ignore the checkbox otherwise (fall back to
-            // standard role-based gating).
-            $useOidc = app(IssuancePolicy::class)->oidcPluginAvailable() && isset($params['useOidc']);
-            $setting->saveSetting(IssuancePolicy::SETTING_USE_OIDC, $useOidc ? '1' : '0');
-
+            // Only the standard-mode minimum role is editable here; the OIDC
+            // on/off switch is the OIDC_PAT_ISSUE_INTEGRATION env flag.
             $minRole = (int) ($params['minRole'] ?? IssuancePolicy::DEFAULT_MIN_ROLE);
             if (array_key_exists($minRole, Roles::getRoles())) {
-                $setting->saveSetting(IssuancePolicy::SETTING_MIN_ROLE, (string) $minRole);
+                app(Setting::class)->saveSetting(IssuancePolicy::SETTING_MIN_ROLE, (string) $minRole);
             }
 
             $this->tpl->setNotification('Settings saved.', 'success');

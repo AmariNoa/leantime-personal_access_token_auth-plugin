@@ -15,15 +15,19 @@ use Leantime\Domain\Setting\Repositories\Setting;
  * Single source of truth for "who may issue a Personal Access Token" and the
  * revocation that follows when someone may not.
  *
- * Two modes, chosen by an admin setting on the plugin's admin page:
+ * Two modes:
  *
- *  - **OIDC-connect mode** (admin enabled it AND the AdvancedOidc plugin is
- *    present): issuance is gated SOLELY on the IdP entitlement the AdvancedOidc
- *    plugin computes at login and leaves in the session
- *    (`advancedOidc.patIssueAllowed`). The Leantime role is ignored.
- *  - **Standard mode** (default / AdvancedOidc absent): issuance is gated on the
- *    Leantime role — the user's role must rank at least as high as the
- *    admin-selected minimum.
+ *  - **OIDC-connect mode** (env flag OIDC_PAT_ISSUE_INTEGRATION is on AND the
+ *    AdvancedOidc plugin is present): issuance is gated SOLELY on the IdP
+ *    entitlement the AdvancedOidc plugin computes at login and leaves in the
+ *    session (`advancedOidc.patIssueAllowed`). The Leantime role is ignored.
+ *  - **Standard mode** (default / flag off / AdvancedOidc absent): issuance is
+ *    gated on the Leantime role — the user's role must rank at least as high as
+ *    the admin-selected minimum.
+ *
+ * The on/off switch lives in env (ops-controlled, applied on container
+ * recreate) rather than a DB setting, so it cannot be toggled off by accident
+ * from the admin UI. Only the standard-mode minimum role is admin-editable.
  *
  * Whenever a user is found NOT entitled, their existing tokens are revoked
  * (fail-closed): at login via {@see enforceAtLogin()} (called by AdvancedOidc),
@@ -33,9 +37,11 @@ use Leantime\Domain\Setting\Repositories\Setting;
  */
 class IssuancePolicy
 {
-    /** zp_settings keys for the two admin-configurable knobs. */
-    public const SETTING_USE_OIDC = 'personalAccessTokenAuth.useOidc';
+    /** zp_settings key for the only admin-configurable knob (standard mode). */
     public const SETTING_MIN_ROLE = 'personalAccessTokenAuth.minRole';
+
+    /** Env flag that switches OIDC-integration gating on (ops-controlled). */
+    public const ENV_OIDC_INTEGRATION = 'OIDC_PAT_ISSUE_INTEGRATION';
 
     /** Session key written by AdvancedOidc at login (contract; advancedOidc.*). */
     public const SESSION_KEY = 'advancedOidc.patIssueAllowed';
@@ -69,16 +75,19 @@ class IssuancePolicy
         return class_exists(self::OIDC_SERVICE);
     }
 
-    /** The raw admin toggle (independent of whether the OIDC plugin is present). */
-    public function useOidcSetting(): bool
+    /**
+     * The raw env switch (independent of whether the OIDC plugin is present).
+     * Accepts true/1/yes/on; unset/anything else => off.
+     */
+    public function oidcIntegrationEnabled(): bool
     {
-        return (bool) $this->settings->getSetting(self::SETTING_USE_OIDC, false);
+        return filter_var(env(self::ENV_OIDC_INTEGRATION, false), FILTER_VALIDATE_BOOLEAN);
     }
 
-    /** Connect-mode is effective only when enabled AND the OIDC plugin exists. */
+    /** Connect-mode is effective only when the env flag is on AND the OIDC plugin exists. */
     public function usesOidc(): bool
     {
-        return $this->useOidcSetting() && $this->oidcPluginAvailable();
+        return $this->oidcIntegrationEnabled() && $this->oidcPluginAvailable();
     }
 
     /** Admin-selected minimum Leantime role key for standard mode. */
